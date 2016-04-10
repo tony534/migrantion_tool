@@ -1,0 +1,65 @@
+<project name="Sample usage of Salesforce Ant tasks" default="deployCode" basedir="." xmlns:sf="antlib:com.salesforce" xmlns:cpptasks="antlib:net.sf.antcontrib.cpptasks" xmlns:ml="org.missinglink.ant.task.http.HttpClientTask">
+
+    <property file="build.properties" />
+    <property environment="env" />
+
+    <taskdef resource="com/salesforce/antlib.xml" uri="antlib:com.salesforce">
+        <classpath>
+            <pathelement location="lib/ant-salesforce.jar" />
+        </classpath>
+    </taskdef>
+
+    <taskdef resource="net/sf/antcontrib/antcontrib.properties">
+        <classpath>
+            <pathelement location="lib/ant-contrib-0.3.jar"/>
+        </classpath>
+    </taskdef>
+    <!-- testLevel: NoTestRun, RunSpecifiedTests, RunLocalTests, RunAllTestsInOrg -->
+    <target name="deployCode" depends="prepareDeployment">
+        <sf:deploy username="${sf.username}" password="${sf.password}" 
+                serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}" 
+                deployRoot="${git.deploymentDir}/src"
+                rollbackOnError="true" checkonly="true">
+        </sf:deploy>
+        <delete dir="${git.deploymentDir}" />
+    </target>
+
+    <target name="describeMetadata">
+        <sf:describeMetadata username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" />
+    </target>
+
+    <target name="listMetadata">
+        <sf:listMetadata username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="${sf.metadataType}" />
+    </target>
+
+    <target name="prepareDeployment">
+        <delete dir="${git.deploymentDir}">
+        </delete>
+        <exec executable="git" output="${git.fileList}">
+            <arg value="diff" />
+            <arg value="--name-only" />
+            <arg value="${git.commit1}" />
+            <arg value="HEAD" />
+        </exec>
+        <replace file="${git.fileList}" token="${line.separator}" value="*${line.separator}">
+        </replace>
+        <copy todir="deployment">
+            <fileset dir="." includesfile="${git.fileList}">
+                <exclude name="**/build.*" />
+                <exclude name="**/deployment-package.xml" />
+                <exclude name="**/package.xml" />
+                <exclude name="**/*.txt" />
+                <exclude name="**/*.profile" />
+            </fileset>
+        </copy>
+        <delete file="${git.fileList}" />
+        <copy file="deployment-package.xml" tofile="deployment/src/package.xml">
+        </copy>
+    </target>
+    
+    <target name="delete">
+        <sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}" 
+                deployRoot="delete" ignoreWarnings="true">
+            </sf:deploy>
+    </target>
+</project>
